@@ -1,0 +1,7 @@
+{
+  "checkpoint": "outputs/per_example_480p/step_000008",
+  "heads_with_weight_updates": 73,
+  "num_heads": 128,
+  "head_max_abs_update": 6.784498691558838e-05,
+  "backbone_patch_max_abs_update": 8.032203186303377e-05
+}

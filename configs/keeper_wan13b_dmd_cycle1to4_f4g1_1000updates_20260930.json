@@ -1,0 +1,12 @@
+{
+  "name": "pdd-wan13b-dmd-cycle1to4-f4g1-1000updates-20260930",
+  "cmd": "bash scripts/train_wan1p3b_480p_dmd_cycle1to4_f4g1_1000updates.sh",
+  "cwd": "/mnt/data/butong/PDD",
+  "env": {
+    "RDZV_ENDPOINT": "10.32.4.167:29630",
+    "CUDA_VISIBLE_DEVICES": "0,1,2,3,4,5,6,7",
+    "OMP_NUM_THREADS": "4",
+    "NCCL_DEBUG": "WARN",
+    "PYTHONUNBUFFERED": "1"
+  }
+}

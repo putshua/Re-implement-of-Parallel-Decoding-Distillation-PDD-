@@ -28,3 +28,5 @@ __pycache__/
 
 # Embedded upstream Git metadata; publish its source files as ordinary files.
 /AnyFlow/.git/
+# Upstream demo/evaluation media is not used by the PDD training package.
+/AnyFlow/assets/

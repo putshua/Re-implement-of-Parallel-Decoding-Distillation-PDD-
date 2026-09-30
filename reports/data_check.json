@@ -1,0 +1,46 @@
+{
+  "checkpoint": true,
+  "manifest_rows": 450613,
+  "cache_roots": [
+    {
+      "source": "/mnt/data/butong/datasets/OpenSora/mixkit_clean/wan2pt1_t5_320x192_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/OpenSora/mixkit_clean/wan2pt1_t5_320x192_81f_sft_cache",
+      "exists": false
+    },
+    {
+      "source": "/mnt/data/butong/datasets/OpenSora/pexels_clean/cache/vlm0-31/wan2pt1_t5_320x192_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/OpenSora/pexels_clean/cache/vlm0-31/wan2pt1_t5_320x192_81f_sft_cache",
+      "exists": false
+    },
+    {
+      "source": "/mnt/data/butong/datasets/OpenSora/pixabay_clean/cache/vlm0-8/wan2pt1_t5_320x192_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/OpenSora/pixabay_clean/cache/vlm0-8/wan2pt1_t5_320x192_81f_sft_cache",
+      "exists": false
+    },
+    {
+      "source": "/mnt/data/butong/datasets/OpenSora/pixabay_clean/cache/vlm9-15/wan2pt1_t5_320x192_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/OpenSora/pixabay_clean/cache/vlm9-15/wan2pt1_t5_320x192_81f_sft_cache",
+      "exists": false
+    },
+    {
+      "source": "/mnt/data/butong/datasets/OpenSora/ultrashort_clean/cache/vlm0-15/wan2pt1_t5_320x192_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/OpenSora/ultrashort_clean/cache/vlm0-15/wan2pt1_t5_320x192_81f_sft_cache",
+      "exists": false
+    },
+    {
+      "source": "/mnt/data/butong/datasets/OpenSora/openvid_clean/cache/wan2pt1_t5_320x192_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/OpenSora/openvid_clean/cache/wan2pt1_t5_320x192_81f_sft_cache",
+      "exists": false
+    },
+    {
+      "source": "/mnt/data/butong/datasets/pexels_pipeline/runs/pexels_motion_extreme_500k/cache/wan2pt1_t5_800x480_81f_sft_cache_dedup",
+      "resolved": "/mnt/data/butong/datasets/pexels_pipeline/runs/pexels_motion_extreme_500k/cache/wan2pt1_t5_800x480_81f_sft_cache_dedup",
+      "exists": true
+    },
+    {
+      "source": "/mnt/data/butong/datasets/youtube_sports_gym_plus_premium/cache/wan2pt1_t5_800x480_81f_sft_cache",
+      "resolved": "/mnt/data/butong/datasets/youtube_sports_gym_plus_premium/cache/wan2pt1_t5_800x480_81f_sft_cache",
+      "exists": false
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "batch": 4,
+      "status": "pass",
+      "peak_reserved_gib": 33.583984375,
+      "mean_samples_per_second": 2.7560456172187298,
+      "completed_steps": 8,
+      "steady_samples_per_second": 2.9958402159362825,
+      "peak_allocated_gib": 31.825786590576172
+    },
+    {
+      "batch": 16,
+      "status": "pass",
+      "peak_reserved_gib": 53.611328125,
+      "mean_samples_per_second": 3.075148999433535,
+      "completed_steps": 8,
+      "steady_samples_per_second": 3.1468343792032774,
+      "peak_allocated_gib": 47.25919723510742
+    },
+    {
+      "batch": 24,
+      "status": "pass",
+      "peak_reserved_gib": 66.171875,
+      "mean_samples_per_second": 3.1431717253025058,
+      "completed_steps": 8,
+      "steady_samples_per_second": 3.155140375328425,
+      "peak_allocated_gib": 57.571006774902344
+    },
+    {
+      "batch": 32,
+      "status": "oom",
+      "completed_steps": 2,
+      "steady_samples_per_second": 3.165381358262615,
+      "peak_allocated_gib": 67.93193054199219
+    }
+  ],
+  "recommended_batch": 24,
+  "memory_fraction": 0.9,
+  "grad_accum": 3,
+  "effective_global_batch": 288,
+  "note": "batch32 OOM after two completed steps; recommended batch24 passed all eight online blocks."
+}

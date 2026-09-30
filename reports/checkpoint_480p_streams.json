@@ -1,0 +1,74 @@
+[
+  {
+    "rank": 0,
+    "world": 4,
+    "batch": 4,
+    "stream_blocks": [
+      80
+    ],
+    "total_batches": 1,
+    "latent_shapes": [
+      [
+        4,
+        16,
+        21,
+        60,
+        104
+      ]
+    ]
+  },
+  {
+    "rank": 1,
+    "world": 4,
+    "batch": 4,
+    "stream_blocks": [
+      80
+    ],
+    "total_batches": 1,
+    "latent_shapes": [
+      [
+        4,
+        16,
+        21,
+        60,
+        104
+      ]
+    ]
+  },
+  {
+    "rank": 2,
+    "world": 4,
+    "batch": 4,
+    "stream_blocks": [
+      80
+    ],
+    "total_batches": 1,
+    "latent_shapes": [
+      [
+        4,
+        16,
+        21,
+        60,
+        104
+      ]
+    ]
+  },
+  {
+    "rank": 3,
+    "world": 4,
+    "batch": 4,
+    "stream_blocks": [
+      80
+    ],
+    "total_batches": 1,
+    "latent_shapes": [
+      [
+        4,
+        16,
+        21,
+        60,
+        104
+      ]
+    ]
+  }
+]

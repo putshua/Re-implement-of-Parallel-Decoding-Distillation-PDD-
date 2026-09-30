@@ -1,0 +1,14 @@
+{
+  "steps": [
+    1,
+    2
+  ],
+  "preview_steps": [
+    0,
+    1,
+    2
+  ],
+  "mp4_verified": 12,
+  "tensorboard_loss_matches_json": true,
+  "animated_tensorboard_images_verified": true
+}

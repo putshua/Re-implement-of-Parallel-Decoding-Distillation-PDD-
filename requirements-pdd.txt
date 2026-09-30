@@ -1,0 +1,4 @@
+# Exact PyTorch version used by the local validation environment (Python 3.11).
+# Cluster images should install requirements.txt and retain their own CUDA PyTorch.
+torch==2.3.1
+-r requirements.txt

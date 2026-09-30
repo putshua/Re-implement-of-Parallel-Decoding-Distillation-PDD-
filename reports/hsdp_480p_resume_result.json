@@ -1,0 +1,26 @@
+{
+  "status": "pass",
+  "continued_step": {
+    "step": 3,
+    "loss_rank_max": 0.15773679316043854,
+    "seconds": 44.88299560546875,
+    "samples_per_second": 0.1782412223622891,
+    "peak_allocated_gib": 22.0064640045166,
+    "peak_reserved_gib": 27.3359375,
+    "grad_norm": 0.07601119577884674,
+    "global_batch": 8,
+    "head_indices_rank0": [
+      [
+        [
+          57
+        ]
+      ],
+      [
+        [
+          51
+        ]
+      ]
+    ]
+  },
+  "scope": "Native 480p HSDP checkpoint restored model/optimizer/online streams/RNG and completed next update. Exact next-step numerical comparison was separately tested on tiny Wan."
+}

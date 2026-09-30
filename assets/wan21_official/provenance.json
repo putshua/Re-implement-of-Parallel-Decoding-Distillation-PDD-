@@ -1,0 +1,33 @@
+{
+  "commit": "9737cba9c1c3c4d04b33fcad41c111989865d315",
+  "files": {
+    "wan/modules/model.py": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/wan/modules/model.py",
+      "sha256": "c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a"
+    },
+    "wan/modules/attention.py": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/wan/modules/attention.py",
+      "sha256": "23fe7c6f6e4065242d95e5e188cb2d1a16bd283f05dca7e7e878977158fcfdbc"
+    },
+    "wan/utils/fm_solvers_unipc.py": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/wan/utils/fm_solvers_unipc.py",
+      "sha256": "0dec8c7ed17f6f2049275c6848113314da6ccec1c8db5bdc89df43c05c6038d9"
+    },
+    "wan/configs/shared_config.py": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/wan/configs/shared_config.py",
+      "sha256": "a942b6f0a1d1a4ec9a7893c17a6218651ce272953b90d012ce5cdd19d15e45f7"
+    },
+    "wan/text2video.py": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/wan/text2video.py",
+      "sha256": "169f0929b273b27a7bc0e094d15a01d48183adc529a1dbce626b179dced29fe8"
+    },
+    "generate.py": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/generate.py",
+      "sha256": "0b12bde63bb316a91ad1462a3db073db4388ec96c818f7548f4e6487939427a4"
+    },
+    "README.md": {
+      "url": "https://raw.githubusercontent.com/Wan-Video/Wan2.1/9737cba9c1c3c4d04b33fcad41c111989865d315/README.md",
+      "sha256": "3bdaca69aa116222a49859dc21d4a735b60a580af7e1b81531085c87227e4486"
+    }
+  }
+}

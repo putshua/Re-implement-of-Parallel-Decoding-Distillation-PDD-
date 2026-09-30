@@ -1,0 +1,25 @@
+{
+  "name": "pdd-wan14b-joint-fsdp16-motion32-20260916",
+  "cwd": "/mnt/data/butong/PDD",
+  "cmd": "bash scripts/train_wan21_14b_480p_phased_dmd_pdd.sh --set log_micro_every=1",
+  "env": {
+    "NNODES": "2",
+    "NPROC_PER_NODE": "8",
+    "FSDP_SHARD_SIZE": "16",
+    "BATCH_SIZE": "1",
+    "GRAD_ACCUM": "8",
+    "MAX_ITER": "250",
+    "RDZV_ENDPOINT": "10.32.9.182:29616",
+    "RDZV_ID": "pdd-wan14b-joint-fsdp16-motion32-20260916",
+    "OUTPUT_DIR": "/mnt/data/butong/PDD/outputs/wan21_14b_phased_dmd_pdd_fsdp16_motion32_20260916",
+    "RESUME_PATH": "auto",
+    "CUDA_VISIBLE_DEVICES": "0,1,2,3,4,5,6,7",
+    "FIXED_PROMPT_EMBEDDINGS": "/mnt/data/butong/pipeline/test_prompts/wan22_sft_high_motion_proportional_32_extended_umt5.pt",
+    "FIXED_PROMPT_COUNT": "32",
+    "FIXED_PROMPT_EVERY": "25",
+    "FIXED_PROMPT_NFE": "[4]",
+    "PYTHON_BIN": "/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python",
+    "PYTHONNOUSERSITE": "1",
+    "NCCL_DEBUG": "WARN"
+  }
+}

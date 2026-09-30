@@ -1,0 +1,83 @@
+{
+  "output": "/mnt/data/butong/PDD/outputs/wan1p3b_480p_450k_fsdp16",
+  "last_logged_step": 48,
+  "last_metrics": {
+    "step": 48,
+    "loss_mean": 0.14412885904312134,
+    "loss_rank_max": 0.19122210144996643,
+    "seconds": 242.85401916503906,
+    "samples_per_second": 1.0541312055701544,
+    "peak_allocated_gib": 36.9266357421875,
+    "peak_reserved_gib": 42.072265625,
+    "grad_norm": 0.25184667110443115,
+    "global_batch": 256,
+    "head_indices_rank0": [
+      [
+        [
+          121
+        ],
+        [
+          113
+        ],
+        [
+          127
+        ],
+        [
+          126
+        ]
+      ],
+      [
+        [
+          115
+        ],
+        [
+          117
+        ],
+        [
+          118
+        ],
+        [
+          116
+        ]
+      ],
+      [
+        [
+          125
+        ],
+        [
+          123
+        ],
+        [
+          115
+        ],
+        [
+          126
+        ]
+      ],
+      [
+        [
+          124
+        ],
+        [
+          115
+        ],
+        [
+          121
+        ],
+        [
+          122
+        ]
+      ]
+    ]
+  },
+  "metrics_mtime": "2026-09-11T18:22:44.384399",
+  "log_count": 100,
+  "logs_with_existing_run_error": 99,
+  "earliest_saved_log": "/mnt/data/butong/PDD/outputs/wan1p3b_480p_450k_fsdp16/logs/train_dlc1laibyi6eziir-master-0_20260911_182753_gPnfIY.log",
+  "latest_saved_log": "/mnt/data/butong/PDD/outputs/wan1p3b_480p_450k_fsdp16/logs/train_dlc1laibyi6eziir-master-0_20260911_230359_Hx2loP.log",
+  "complete_checkpoints": [
+    "/mnt/data/butong/PDD/outputs/wan1p3b_480p_450k_fsdp16/step_000025"
+  ],
+  "first_interruption_cause": "Unknown: saved console logs begin after the interruption. Need original cluster logs around 2026-09-11 18:22-18:28 (filesystem/log displayed times).",
+  "restart_failure_cause": "Existing output contains metrics.jsonl but command omits --resume. FileExistsError triggers worker failure; network shutdown errors are secondary."
+}

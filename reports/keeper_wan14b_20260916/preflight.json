@@ -1,0 +1,11 @@
+{
+  "name": "pdd-wan14b-preflight-20260916",
+  "cwd": "/mnt/data/butong/PDD",
+  "cmd": "/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python reports/keeper_wan14b_20260916/preflight.py",
+  "env": {
+    "PYTHONPATH": "/mnt/data/butong/PDD/AnyFlow",
+    "PYTHONNOUSERSITE": "1",
+    "USE_TF": "0",
+    "CUDA_VISIBLE_DEVICES": "0,1,2,3,4,5,6,7"
+  }
+}

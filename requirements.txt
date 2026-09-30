@@ -1,0 +1,14 @@
+# Cluster runtime dependencies. Keep the CUDA-enabled PyTorch supplied by the image.
+diffusers==0.34.0
+transformers==4.55.4
+accelerate==1.12.0
+safetensors
+numpy<2
+einops
+ftfy
+sentencepiece
+imageio
+imageio-ffmpeg
+matplotlib
+tensorboard
+Pillow

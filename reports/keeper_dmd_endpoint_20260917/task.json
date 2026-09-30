@@ -1,0 +1,21 @@
+{
+  "name": "pdd-wan13b-dmd-endpoint-from-pdd-step100-retry-20260918",
+  "cwd": "/mnt/data/butong/PDD",
+  "cmd": "bash scripts/train_wan1p3b_480p_450k_dmd_endpoint_from_pdd.sh --set log_micro_every=8",
+  "env": {
+    "NNODES": "2",
+    "NPROC_PER_NODE": "8",
+    "FSDP_SHARD_SIZE": "16",
+    "BATCH_SIZE": "1",
+    "GRAD_ACCUM": "4",
+    "MAX_ITER": "250",
+    "RDZV_ENDPOINT": "dlc1brf5zeo88nfz-master-0:29617",
+    "RDZV_ID": "pdd-wan13b-dmd-endpoint-from-pdd-step100-retry-20260918",
+    "OUTPUT_DIR": "/mnt/data/butong/PDD/outputs/wan1p3b_480p_450k_dmd_endpoint_from_pdd_step100_gbs64_fsdp16_20260917",
+    "RESUME_PATH": "none",
+    "CUDA_VISIBLE_DEVICES": "0,1,2,3,4,5,6,7",
+    "PYTHON_BIN": "/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python",
+    "PYTHONNOUSERSITE": "1",
+    "NCCL_DEBUG": "WARN"
+  }
+}

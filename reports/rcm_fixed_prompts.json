@@ -1,0 +1,17 @@
+{
+  "count": 6,
+  "shape": [
+    6,
+    512,
+    4096
+  ],
+  "dtype": "torch.bfloat16",
+  "matches_rcm_original": true,
+  "finite": true,
+  "embedding_path": "/mnt/data/butong/PDD/assets/rcm_fixed_prompts/prompts_000000000.pt",
+  "preview_every": 25,
+  "nfe": [
+    4,
+    8
+  ]
+}

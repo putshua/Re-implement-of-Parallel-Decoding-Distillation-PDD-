@@ -1,0 +1,1 @@
+python -m torch.distributed.run --nnodes 4 --nproc_per_node 8 --node_rank 0 --master_addr 10.0.0.1 --master_port 29571 -m pdd.train --config /mnt/data/butong/PDD/configs/wan13b_480p.json --batch-size 4 --grad-accum 2 

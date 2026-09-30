@@ -1,0 +1,18 @@
+{
+  "resolution": [
+    832,
+    480
+  ],
+  "frames": 81,
+  "world_size": 4,
+  "batch_per_gpu": 4,
+  "grad_accum": 2,
+  "global_batch": 32,
+  "completed_steps": 2,
+  "status": "pass",
+  "peak_allocated_gib": 59.78590393066406,
+  "peak_reserved_gib": 74.5703125,
+  "steady_samples_per_second": 0.26033128075072265,
+  "allocator": "max_split_size_mb:512",
+  "scope": "8 blocks at accumulation 1, plus 2 complete optimizer updates at accumulation 2. Global batch 256 not locally tested."
+}

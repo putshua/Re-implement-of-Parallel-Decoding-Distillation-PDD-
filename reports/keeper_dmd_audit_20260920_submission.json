@@ -1,0 +1,34 @@
+[
+  {
+    "ip": "10.32.10.51",
+    "result": {
+      "id": "t20260920-110909-21",
+      "name": "pdd-wan13b-endpoint-dmd-normalized-audit-20260920",
+      "cmd": "bash scripts/train_wan1p3b_480p_450k_dmd_endpoint_from_pdd.sh --set log_micro_every=1",
+      "cwd": "/mnt/data/butong/PDD",
+      "pid": 51202,
+      "pid_start": 25662533,
+      "status": "running",
+      "start_time": "2026-09-20 11:09:09",
+      "end_time": "",
+      "log_file": "/mnt/data/butong/keeper/run/dlc1brf5zeo88nfz-master-0/tasks/t20260920-110909-21.log",
+      "follow": "GET /task/t20260920-110909-21/log?n=100  |  POST /task/t20260920-110909-21/stop"
+    }
+  },
+  {
+    "ip": "10.32.9.209",
+    "result": {
+      "id": "t20260920-110909-21",
+      "name": "pdd-wan13b-endpoint-dmd-normalized-audit-20260920",
+      "cmd": "bash scripts/train_wan1p3b_480p_450k_dmd_endpoint_from_pdd.sh --set log_micro_every=1",
+      "cwd": "/mnt/data/butong/PDD",
+      "pid": 51589,
+      "pid_start": 25899465,
+      "status": "running",
+      "start_time": "2026-09-20 11:09:09",
+      "end_time": "",
+      "log_file": "/mnt/data/butong/keeper/run/dlc1qh3h1mhywsxc-master-0/tasks/t20260920-110909-21.log",
+      "follow": "GET /task/t20260920-110909-21/log?n=100  |  POST /task/t20260920-110909-21/stop"
+    }
+  }
+]

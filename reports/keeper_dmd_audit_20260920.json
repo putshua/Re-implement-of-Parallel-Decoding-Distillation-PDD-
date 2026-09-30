@@ -1,0 +1,24 @@
+{
+  "name": "pdd-wan13b-endpoint-dmd-normalized-audit-20260920",
+  "cwd": "/mnt/data/butong/PDD",
+  "cmd": "bash scripts/train_wan1p3b_480p_450k_dmd_endpoint_from_pdd.sh --set log_micro_every=1",
+  "env": {
+    "NNODES": "2",
+    "NPROC_PER_NODE": "8",
+    "FSDP_SHARD_SIZE": "16",
+    "BATCH_SIZE": "1",
+    "GRAD_ACCUM": "4",
+    "MAX_ITER": "25",
+    "SAVE_EVERY": "5",
+    "RDZV_ENDPOINT": "dlc1brf5zeo88nfz-master-0:29620",
+    "RDZV_ID": "pdd-dmd-normalized-audit-20260920",
+    "OUTPUT_DIR": "/mnt/data/butong/PDD/outputs/wan13b_dmd_normalized_audit_20260920",
+    "FIXED_PROMPT_COUNT": "4",
+    "FIXED_PROMPT_EVERY": "5",
+    "FIXED_PROMPT_AT_START": "1",
+    "CUDA_VISIBLE_DEVICES": "0,1,2,3,4,5,6,7",
+    "PYTHON_BIN": "/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python",
+    "PYTHONNOUSERSITE": "1",
+    "NCCL_DEBUG": "WARN"
+  }
+}

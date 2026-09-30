@@ -1,0 +1,7 @@
+{
+  "checkpoint": "outputs/smoke_4gpu/step_000008",
+  "heads_with_weight_updates": 26,
+  "num_heads": 64,
+  "head_max_abs_update": 5.1662325859069824e-05,
+  "backbone_patch_max_abs_update": 7.815845310688019e-05
+}
