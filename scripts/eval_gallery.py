@@ -21,7 +21,7 @@ rows = [
 expected = (
     args["limit"]
     * len(args["seeds"])
-    * (len(args["nfe"]) + (not args.get("skip_teacher", False)))
+    * ((0 if args.get("teacher_only", False) else len(args["nfe"])) + (not args.get("skip_teacher", False)))
 )
 assert len(rows) == expected, (len(rows), expected)
 assert len({(r["prompt_index"], r["seed"], r["mode"]) for r in rows}) == expected

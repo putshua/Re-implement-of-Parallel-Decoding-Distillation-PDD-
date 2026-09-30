@@ -5,7 +5,7 @@ Fake velocities must be conditioned on the endpoint/phase being trained.
 """
 
 import torch
-from pdd.core import pd_loss
+from pdd.core import pd_loss, rollout
 
 
 def _times(xs, endpoint, time):
@@ -138,12 +138,8 @@ def joint_phase_forward(
     k = torch.as_tensor(k, device=grid.device, dtype=torch.long)
     if not ((k >= n) & (k < end)).all():
         raise ValueError("MSE target head must be inside current phase")
-    x = noise.detach()
     with torch.no_grad():
-        for left, right in zip(edges[:phase], edges[1 : phase + 1]):
-            coefficients = grid.new_zeros(1, len(grid) - 1)
-            coefficients[0, left:right] = grid.diff()[left:right]
-            x = x.float() + student(x, grid[left], context, coefficients)[:, 0]
+        x = rollout(student, noise.detach(), context, grid, edges[: phase + 1])
     return pd_loss(
         student,
         teacher_velocity,

@@ -24,7 +24,7 @@ class PromptEmbeddings(Dataset):
 
 
 class WeightedPromptCache(IterableDataset):
-    """Bidirectional 450613-row weight index; prompt-only, original cache resolutions.
+    """Optional weighted prompt-only cache reader.
 
     Draw shards proportional to max(weight), then scan every member and accept each
     member with weight/max(weight). Accepted prompts follow the SFT weights.
@@ -64,7 +64,6 @@ class WeightedPromptCache(IterableDataset):
                             str(shard),
                             weights,
                             float(part.max()),
-                            float(part.max()),
                         )
                     )
         if not self.entries:
@@ -75,9 +74,9 @@ class WeightedPromptCache(IterableDataset):
         rng = random.Random(
             self.seed + 1000003 * self.rank + (worker.id if worker else 0)
         )
-        masses = [e[3] for e in self.entries]
+        masses = [e[2] for e in self.entries]
         while True:
-            path, weights, maximum, _ = rng.choices(self.entries, weights=masses, k=1)[
+            path, weights, maximum = rng.choices(self.entries, weights=masses, k=1)[
                 0
             ]
             with tarfile.open(path) as tar:

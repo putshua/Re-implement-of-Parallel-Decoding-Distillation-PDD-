@@ -166,8 +166,11 @@ class TestPDD(unittest.TestCase):
         torch.testing.assert_close(
             sample(student, x, None, grid, 4), -torch.ones_like(x)
         )
+        torch.testing.assert_close(
+            sample(student, x, None, grid, 3), -torch.ones_like(x)
+        )
         with self.assertRaises(ValueError):
-            sample(student, x, None, grid, 3)
+            sample(student, x, None, grid, 0)
 
 
 class TestTeacherTargets(unittest.TestCase):

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Shared interpreter used by every node; never fall back to node-local Python.
-export PYTHON_BIN="${PYTHON_BIN:-/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python}"
-if [[ ! -x "$PYTHON_BIN" ]]; then
-  echo "Shared Python is not executable: $PYTHON_BIN. Check the shared mount on this node." >&2
+# Select Python from the active environment, or use the caller's explicit path.
+if ! PYTHON_BIN="$(command -v "${PYTHON_BIN:-python}")" || [[ ! -x "$PYTHON_BIN" ]]; then
+  echo "Python is not executable. Activate an environment or set PYTHON_BIN." >&2
   exit 2
 fi
+export PYTHON_BIN
 export PATH="$(dirname "$PYTHON_BIN"):$PATH"
 export PYTHONNOUSERSITE=1

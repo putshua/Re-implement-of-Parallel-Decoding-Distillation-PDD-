@@ -1,66 +1,111 @@
-# PDD / Wan
+# Parallel Decoding Distillation — Community Implementation
 
-Wan2.1 的 PDD 轨迹蒸馏及 DMD 实验代码。自有实现位于 `AnyFlow/pdd/`，上游 AnyFlow 保留在 `AnyFlow/`；训练入口是 `python -m pdd.train`。
+An **unofficial community implementation** of [Parallel Decoding Distillation for Fast Image and Video Generation](https://arxiv.org/abs/2607.26004), based on [NVlabs/AnyFlow](https://github.com/NVlabs/AnyFlow). Supports Wan2.1 T2V 1.3B and 14B, with optional DMD extensions. This is not the authors' official implementation or a claim to reproduce their reported results. The adapted implementation is in `AnyFlow/pdd/`; the [upstream license](AnyFlow/LICENSE) is retained.
 
-## 先选择实验
+## Environment
 
-| 模式 | 启动脚本（位于 scripts/） | 实际目标 |
-|---|---|---|
-| 纯 PDD | `train_pdd.sh` | 原 PDD 在线轨迹监督；由 CONFIG 指定数据与规模 |
-| Phased DMD + PDD | `train_wan1p3b_phased_dmd_pdd.sh` | phase 终点 DMD + 局部轨迹 MSE |
-| 同 rollout 的 PDD 对照 | `train_wan1p3b_pdd_matched.sh` | phased rollout，但 DMD 权重为 0 |
-| PDD checkpoint → 终点 DMD | `train_wan1p3b_480p_450k_dmd_endpoint_from_pdd.sh` | 四步完整 rollout，只有最终 x0-DMD |
-| 14B 纯 PDD | `train_wan21_14b_480p_450k.sh` | 原 PDD 轨迹监督 |
-| 14B 联合实验 | `train_wan21_14b_480p_phased_dmd_pdd.sh` | Phased DMD + PDD |
-
-`train_wan1p3b_480p_450k.sh` 是旧的联合/对照入口，默认联合实验。
-`_16gpu.sh`、`_rcm6_fresh.sh` 都是它的兼容别名，文件名不代表实际卡数或初始化策略。
-新入口只是明确命名的包装，不改变算法和默认参数。
-
-## 两节点启动
-
-两个节点各执行同一条命令，使用相同 rendezvous 和共享盘路径。例如终点 DMD：
+Linux, Python 3.10–3.12, CUDA-enabled PyTorch, and NVIDIA GPUs with BF16 support are required. The tested dependency versions are PyTorch 2.8.0, Diffusers 0.39.0, Transformers 5.13.1, and Accelerate 1.14.0. GPU memory depends on model size, batch size, and video length; start with batch size 1. Install PyTorch for your CUDA runtime first:
 
 ```bash
-cd /mnt/data/butong/PDD
-RDZV_ENDPOINT=<主节点hostname>:29621 RDZV_ID=<唯一实验ID> \
-NNODES=2 NPROC_PER_NODE=8 FSDP_SHARD_SIZE=16 \
-BATCH_SIZE=1 GRAD_ACCUM=4 MAX_ITER=250 \
-OUTPUT_DIR=/mnt/data/butong/PDD/outputs/<新实验名> \
-bash scripts/train_wan1p3b_480p_450k_dmd_endpoint_from_pdd.sh
+python -m venv .venv
+source .venv/bin/activate
+# Example CUDA build; choose the index appropriate for your system.
+python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps
+python scripts/check_runtime.py
 ```
 
-上式 global batch=64。先加 `DRY_RUN=1` 可检查完整命令，不加载模型或启动训练。
-脚本不会自动向另一个节点提交任务；keeper 两端提交同一 payload 的示例见
-[正式实验 payload](reports/keeper_dmd_formal_20260920.json)。使用前重新确认节点空闲。
+Install `ffmpeg` and `ffprobe` for video galleries. Download a **native Wan2.1 T2V checkpoint**, including its transformer weights, UMT5 encoder/tokenizer, and VAE. Obtain a [Wan2.2 source checkout](https://github.com/Wan-Video/Wan2.2) with `wan/modules/t5.py` and `wan/modules/vae2_1.py` (used here for its Wan2.1-compatible encoder and VAE). Set your own paths in the configuration; no weights or datasets are included. Transformers run through Diffusers; prompt encoding and VAE decoding use the supplied Wan source.
 
-共享 Python 默认固定为 `/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python`，
-不存在时直接报错。依赖入口是 `requirements.txt`；不要用上游完整依赖覆盖该环境。
+Scripts use Python from the active environment. Set `PYTHON_BIN` to an executable path if needed. Multi-node runs require compatible environments, reachable rendezvous networking, identical model/data paths, and a shared output directory on every node.
 
-## 算法与验证范围
+## Training
 
-- 生成分辨率为 480p；450k 入口读取 450,613 条加权文本 embedding，不读取真实视频 latent。cache 名称中的 192p 不影响生成分辨率。
-- 终点 DMD 默认从纯 PDD step100 **只加载 student 权重**，新建 optimizer，trajectory 权重为 0。Phased 联合实验默认从原始 Wan 初始化，PDD/DMD 权重均为 1。
-- 当前没有 fake 预热阶段。终点 DMD 使用 boundary 归一化、fake:G=5:1。
-- BF16 前向计算、FP32 master 参数和 Adam moments；首次更新打印运行时精度检查。
-- 归一化修正后的 DMD 实验仍观察到运动退化，不能把 loss 稳定视为质量收敛。详见 [DMD 检查](reports/dmd_audit_20260920.md) 和 [精度验证](reports/dmd_formal_fp32_20260920.md)。
+### Prepare your prompt dataset
 
-## 导航
-
-- [训练、恢复、日志和评测](docs/training.md)
-- [源码模块与目录职责](docs/codebase.md)
-- [配置索引与覆盖优先级](configs/README.md)
-- [脚本分类](scripts/README.md)
-- [实验记录索引](reports/README.md)
-- [历史 README](docs/archive/README_before_20260924.md)：旧参数仅作历史参考
-
-测试入口：
+Training uses prompt embeddings and generated noise, without ground-truth videos. Supply a UTF-8 text file with one prompt per line, or JSONL rows such as `{"id":"example-1","caption":"A dog runs across a grassy field."}` (`id` is optional).
 
 ```bash
-PYTHONPATH=AnyFlow OMP_NUM_THREADS=1 \
-/mnt/data/butong/miniconda3/envs/causvid-wan21-final/bin/python \
-  -m unittest discover -s tests -v
+python scripts/prepare_embeddings.py \
+  --prompts /path/to/train_prompts.txt \
+  --checkpoint /path/to/Wan2.1-T2V-1.3B \
+  --wan-root /path/to/Wan-source \
+  --output /path/to/train_embeddings \
+  --negative-prompt "low quality, blurry"
 ```
 
-`outputs/` 保存实际模型、视频和日志；`reports/` 保存检查结果及历史任务 payload。
-上游代码与许可证见 `AnyFlow/README.md`、`AnyFlow/LICENSE`。
+For JSONL, replace `--prompts` with `--manifest`. The command writes resumable `prompts_*.pt` shards and, when requested, `negative_embeddings.pt`. Each shard contains `prompts` and `t5_text_embeddings` shaped `[N,512,4096]`; negative embeddings have shape `[512,4096]`. Encode a separate small prompt collection for evaluation and callbacks.
+
+Copy one of these configurations and replace its `/path/to/...` placeholders:
+
+| Configuration | Objective |
+|---|---|
+| `configs/pdd_wan1p3b.example.json` | Pure PDD trajectory distillation |
+| `configs/dmd_wan1p3b.example.json` | Final-endpoint DMD with the PDD student architecture |
+| `configs/phased_dmd_pdd_wan1p3b.example.json` | Phased endpoint DMD plus trajectory MSE |
+
+Set `embedding_dir` to your shard directory, **or** replace it with `prompt_embeddings` pointing to one prepared `.pt` file. Set `negative_embeddings`, `checkpoint`, and `wan_root` explicitly. `height`, `width`, and `frames` select generated video dimensions. Wan2.1 14B uses the same entries with a native T2V-14B checkpoint; start with batch 1 and a larger FSDP group, then measure memory before increasing accumulation.
+
+### Single node
+
+```bash
+cp configs/pdd_wan1p3b.example.json configs/my_pdd.json
+# Edit configs/my_pdd.json before running.
+CONFIG=configs/my_pdd.json NPROC_PER_NODE=4 \
+BATCH_SIZE=1 GRAD_ACCUM=8 FSDP_SHARD_SIZE=4 \
+OUTPUT=outputs/my_pdd bash scripts/train_single_node.sh
+```
+
+For DMD or joint training, copy the corresponding configuration and pass it through `CONFIG` to the same script. The examples enable teacher FSDP and require at least two ranks; for one GPU, disable `teacher_fsdp` and use a sharding size of 1 if the model fits.
+
+### Multiple nodes
+
+Run the same command on **every participating node**:
+
+```bash
+CONFIG=/shared/project/configs/my_dmd.json \
+NNODES=2 NPROC_PER_NODE=8 \
+RDZV_ENDPOINT=MASTER_IP:29571 RDZV_ID=my-unique-dmd-run \
+BATCH_SIZE=1 GRAD_ACCUM=2 FSDP_SHARD_SIZE=8 \
+OUTPUT=/shared/project/outputs/my_dmd \
+bash scripts/train_multi_node.sh
+```
+
+Replace `MASTER_IP` with an address reachable from all nodes. The scripts launch local workers; they do not submit jobs to other machines. Global batch is `NNODES × NPROC_PER_NODE × BATCH_SIZE × GRAD_ACCUM` (32 above). FSDP group size controls parameter sharding separately. Use `DRY_RUN=1` to inspect the command. CLI overrides include `--steps 1000` and `--set lr=2e-5`.
+
+The DMD example initializes from the teacher, uses generator/fake learning rates `2e-5`/`1e-5`, warms up the fake score for 50 updates, then performs four fake updates per generator update. Its 1000-step budget counts every fake or generator update, including warmup. `rollout_nfes=[1,2,3,4]` cycles deterministic trajectory rollout lengths; it does not re-noise between rollout intervals. Pure DMD has `traj_weight=0`; the joint example uses phase-endpoint DMD and trajectory MSE. Set `student_init` to a completed PDD checkpoint to import student weights only; use `RESUME` to restore the full training state instead.
+
+The examples save every 5 steps and retain every 50th checkpoint. Resume with the same distributed layout and batch settings:
+
+```bash
+CONFIG=configs/my_pdd.json NPROC_PER_NODE=4 FSDP_SHARD_SIZE=4 \
+BATCH_SIZE=1 GRAD_ACCUM=8 OUTPUT=outputs/my_pdd RESUME=auto \
+bash scripts/train_single_node.sh
+```
+
+Completed checkpoints contain a `COMPLETE` marker. Ordinary logs are in `OUTPUT/logs`; TensorBoard loss is in `OUTPUT/tensorboard`. For training previews, set `fixed_prompt_enabled=true`, `fixed_prompt_embeddings` to your evaluation file, `fixed_prompt_every=25`, `fixed_prompt_count` to your prompt count, `fixed_prompt_nfe=[4]`, and `fixed_prompt_decode=true`. The preview page is `OUTPUT/fixed_prompt/index.html`.
+
+## Inference
+
+Use the run's saved configuration and a completed checkpoint:
+
+```bash
+CONFIG=outputs/my_pdd/config.json \
+PROMPTS=/path/to/eval_embeddings/prompts_000000000.pt \
+WAN_ROOT=/path/to/Wan-source NPROC_PER_NODE=4 \
+OUTPUT=outputs/evaluation bash scripts/eval_pdd.sh \
+  --student outputs/my_pdd/step_001000 \
+  --nfe 4 --limit 16 --seeds 42 43 44 45 46 --skip-teacher --decode
+```
+
+Set `--limit` no higher than the number of evaluation prompts. NFE must fit the checkpoint's trained interval range: the PDD example permits 4 or 8; the DMD example permits 1–4. Student inference uses one conditioned network call per interval, with CFG learned during distillation. Removing `--skip-teacher` also evaluates the training teacher using its configured CFG and an Euler trajectory. `--teacher-only --official-teacher-root /path/to/Wan2.1 --official-negative /path/to/official_negative_embeddings.pt` selects the separate Wan2.1 1.3B official-example comparison: native model, UniPC50, shift8, CFG6. Prepare the official negative text with the same UMT5 encoder. These teacher settings differ from the student's trajectory grid.
+
+To generate a gallery after decoded evaluation:
+
+```bash
+python scripts/eval_gallery.py outputs/evaluation
+python -m http.server 8080 --bind 127.0.0.1 --directory outputs/evaluation
+```
+
+Use `--resume-evaluation` with unchanged evaluation arguments to continue an interrupted inference run.

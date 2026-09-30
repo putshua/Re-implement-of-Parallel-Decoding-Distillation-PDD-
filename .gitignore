@@ -22,6 +22,7 @@ __pycache__/
 # Local credentials
 .env
 .env.*
+.venv/
 .token
 *.pem
 *.key
@@ -30,3 +31,33 @@ __pycache__/
 /AnyFlow/.git/
 # Upstream demo/evaluation media is not used by the PDD training package.
 /AnyFlow/assets/
+
+# Local experiments, prompt collections, reports and deployment configuration
+/assets/
+/reports/
+/docs/
+/.local/
+/requirements-pdd.txt
+/configs/*
+!/configs/*.example.json
+/scripts/*
+!/scripts/shared_env.sh
+!/scripts/train_pdd.sh
+!/scripts/train_single_node.sh
+!/scripts/train_multi_node.sh
+!/scripts/train_logging.sh
+!/scripts/eval_pdd.sh
+!/scripts/prepare_embeddings.py
+!/scripts/check_runtime.py
+!/scripts/eval_gallery.py
+!/scripts/summarize_eval.py
+/tests/*
+!/tests/test_*.py
+/tests/test_launcher.py
+/AnyFlow/*
+!/AnyFlow/pdd/
+!/AnyFlow/LICENSE
+
+/build/
+/dist/
+*.egg-info/

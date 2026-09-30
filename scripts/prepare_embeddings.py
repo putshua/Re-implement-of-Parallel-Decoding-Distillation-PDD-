@@ -1,8 +1,4 @@
-"""Encode exact 450k-manifest captions when original SFT cache mounts are absent.
-
-Output one atomic .pt per shard, never concatenate the 450k token tensors in RAM.
-Run with torchrun for rank-sharded preparation; existing finished shards are checked.
-"""
+"""Encode user-provided captions into atomic, resumable UMT5 embedding shards."""
 
 import argparse
 import hashlib
@@ -18,14 +14,19 @@ from pdd.native import wan_module
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--manifest", required=True)
-    p.add_argument("--checkpoint", default="../Wan2.2/checkpoints/Wan2.1-T2V-1.3B")
-    p.add_argument("--wan-root", default="../Wan2.2")
+    inputs = p.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--manifest", help="JSONL with caption and optional id fields")
+    inputs.add_argument("--prompts", help="UTF-8 text file with one prompt per line")
+    p.add_argument("--checkpoint", required=True)
+    p.add_argument("--wan-root", required=True)
+    p.add_argument("--negative-prompt", help="Also encode this text as negative_embeddings.pt")
     p.add_argument("--output", required=True)
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--shard-size", type=int, default=128)
     a = p.parse_args()
+    if min(a.batch_size, a.shard_size) < 1 or a.limit < 0:
+        p.error("Batch/shard sizes must be positive and limit must be nonnegative")
     rank = int(os.environ.get("RANK", 0))
     world = int(os.environ.get("WORLD_SIZE", 1))
     device = torch.device("cuda", int(os.environ.get("LOCAL_RANK", 0)))
@@ -33,14 +34,20 @@ def main():
     out = Path(a.output)
     out.mkdir(parents=True, exist_ok=True)
     rows = []
-    with open(a.manifest) as f:
-        for line in f:
-            row = json.loads(line)
+    source = a.manifest or a.prompts
+    with open(source, encoding="utf-8") as f:
+        for number, line in enumerate(f):
+            if not line.strip():
+                continue
+            row = json.loads(line) if a.manifest else {"caption": line.strip()}
             if not row.get("caption"):
                 raise ValueError("Manifest row missing caption")
+            row.setdefault("id", f"prompt-{number:09d}")
             rows.append(row)
             if a.limit and len(rows) >= a.limit:
                 break
+    if not rows:
+        raise ValueError("Prompt collection is empty")
     ckpt = Path(a.checkpoint)
     model = wan_module(a.wan_root, "t5").T5EncoderModel(
         512,
@@ -75,7 +82,7 @@ def main():
                 "t5_text_embeddings": torch.stack(values),
                 "manifest_ids": [r["id"] for r in subset],
                 "caption_sha256": digest,
-                "manifest": str(Path(a.manifest).resolve()),
+                "manifest": str(Path(source).resolve()),
                 "row_start": start,
             },
             str(path) + ".tmp",
@@ -85,6 +92,13 @@ def main():
             json.dumps({"rank": rank, "path": str(path), "rows": len(prompts)}),
             flush=True,
         )
+    if a.negative_prompt is not None and rank == 0:
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+            context = model([a.negative_prompt], device)[0]
+            context = torch.nn.functional.pad(context, (0, 0, 0, 512 - len(context))).cpu()
+        target = out / "negative_embeddings.pt"
+        torch.save(context, str(target) + ".tmp")
+        Path(str(target) + ".tmp").replace(target)
 
 
 if __name__ == "__main__":

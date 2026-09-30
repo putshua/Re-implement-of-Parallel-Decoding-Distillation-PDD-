@@ -65,9 +65,16 @@ def main():
     joint_mode = cfg.get("training_objective") == "phased_dmd_pdd"
     count_optimizer_updates = joint_mode and bool(cfg.get("count_optimizer_updates", False))
     updates_per_cycle = int(cfg.get("fake_updates_per_g", 0)) + 1 if joint_mode else 1
-    if count_optimizer_updates and cfg["steps"] % updates_per_cycle:
-        raise ValueError("steps must be divisible by fake_updates_per_g + 1")
-    cycle_steps = cfg["steps"] // updates_per_cycle if count_optimizer_updates else cfg["steps"]
+    warmup_steps = int(cfg.get("fake_warmup_steps", 0))
+    if warmup_steps < 0 or (warmup_steps and (not joint_mode or cfg["dmd_weight"] <= 0)):
+        raise ValueError("fake_warmup_steps requires enabled DMD and must be nonnegative")
+    step_offset = warmup_steps if count_optimizer_updates else 0
+    if cfg["steps"] <= step_offset:
+        raise ValueError("steps must leave at least one generator cycle after fake warmup")
+    if count_optimizer_updates and (cfg["steps"] - step_offset) % updates_per_cycle:
+        raise ValueError("steps minus fake warmup must be divisible by fake_updates_per_g + 1")
+    cycle_steps = ((cfg["steps"] - step_offset) // updates_per_cycle
+                   if count_optimizer_updates else cfg["steps"])
     rank, world, local = [
         int(os.environ.get(k, d))
         for k, d in [("RANK", 0), ("WORLD_SIZE", 1), ("LOCAL_RANK", 0)]
@@ -81,7 +88,7 @@ def main():
         raise ValueError("optimizer_cpu_offload must be true, false or auto")
     if not torch.cuda.is_available():
         raise RuntimeError(
-            "CUDA unavailable: run on the GPU host, outside the restricted sandbox"
+            "CUDA is required for training. Check your PyTorch installation and GPU access."
         )
     torch.cuda.set_device(local)
     if cfg.get("checkpoint_prefetch", False) and rank == 0:
@@ -286,6 +293,7 @@ def main():
     # One retained on-policy stream per accumulation microbatch; no retained graph.
     streams = [None] * accum
     start = 0
+    resume_step = 0
     if cfg.get("resume"):
         checkpoint = Path(cfg["resume"])
         if not (checkpoint / "COMPLETE").is_file():
@@ -304,6 +312,7 @@ def main():
                 "traj_weight",
                 "fake_lr",
                 "fake_updates_per_g",
+                "fake_warmup_steps",
                 "dmd_ramp_steps",
                 "dmd_time_shift",
                 "dmd_min_gap",
@@ -348,9 +357,13 @@ def main():
             move_optimizer_state(optimizer, "cpu")
             torch.cuda.empty_cache()
         saved_step = state["step"]
-        if count_optimizer_updates and saved_step % updates_per_cycle:
-            raise ValueError("Checkpoint is not at a complete fake/G cycle")
-        start = saved_step // updates_per_cycle if count_optimizer_updates else saved_step
+        resume_step = saved_step
+        if count_optimizer_updates:
+            if saved_step >= step_offset and (saved_step - step_offset) % updates_per_cycle:
+                raise ValueError("Checkpoint is not at a complete fake/G cycle")
+            start = max(0, saved_step - step_offset) // updates_per_cycle
+        else:
+            start = saved_step
         if joint:
             joint.restore(checkpoint, saved_step)
         del state
@@ -384,15 +397,17 @@ def main():
     )
     if rank == 0 and cfg.get("resume"):
         backup = reconcile_metrics(
-            output, start * updates_per_cycle if count_optimizer_updates else start
+            output, resume_step
         )
         if count_optimizer_updates:
-            reconcile_metrics(output, start * updates_per_cycle, "optimizer_updates.jsonl")
+            reconcile_metrics(output, resume_step, "optimizer_updates.jsonl")
+            if warmup_steps:
+                reconcile_metrics(output, min(resume_step, warmup_steps), "fake_warmup.jsonl")
         print(
             json.dumps(
                 {
                     "event": "resume_ready",
-                    "step": start * updates_per_cycle if count_optimizer_updates else start,
+                    "step": resume_step,
                     "checkpoint": cfg["resume"],
                     "metrics_backup": backup,
                 }
@@ -404,19 +419,137 @@ def main():
         open(output / "optimizer_updates.jsonl", "a", buffering=1)
         if rank == 0 and count_optimizer_updates else None
     )
+    def save_checkpoint(display_step):
+        keep_every = cfg.get("checkpoint_keep_every", 0)
+        if cfg.get("save_checkpoints", True) and (
+            checkpoint_due(
+                display_step,
+                cfg.get("save_every", 25),
+                cfg["steps"],
+                cfg.get("save_first_step", False),
+            )
+            or (keep_every > 0 and display_step % keep_every == 0)
+        ):
+            folder = output / f"step_{display_step:06d}"
+            folder.mkdir(exist_ok=True)
+            if rank == 0:
+                (folder / "COMPLETE").unlink(missing_ok=True)
+                print(
+                    json.dumps(
+                        {
+                            "event": "checkpoint_start",
+                            "step": display_step,
+                            "output": str(folder),
+                        }
+                    ),
+                    flush=True,
+                )
+            if world > 1:
+                dist.barrier()
+            if cfg.get("optimizer_cpu_offload", False):
+                move_optimizer_state(optimizer, device)
+            model_state, optim_state = checkpoint_state(student, optimizer)
+            if cfg.get("optimizer_cpu_offload", False):
+                move_optimizer_state(optimizer, "cpu")
+                torch.cuda.empty_cache()
+            if rank == 0:
+                torch.save(
+                    {
+                        "student": model_state,
+                        "optimizer": optim_state,
+                        "step": display_step,
+                        "config": cfg,
+                    },
+                    folder / "model.pt.tmp",
+                )
+                (folder / "model.pt.tmp").replace(folder / "model.pt")
+            del model_state, optim_state
+            if joint:
+                joint.save(folder, display_step)
+            torch.save(
+                {
+                    "world": world,
+                    "batch": batch,
+                    "streams": streams,
+                    "cpu_rng": torch.get_rng_state(),
+                    "cuda_rng": torch.cuda.get_rng_state(),
+                    "python_rng": random.getstate(),
+                    "total_batches": total_batches,
+                },
+                folder / f"rank_{rank}.pt",
+            )
+            if world > 1:
+                dist.barrier()
+            if rank == 0:
+                (folder / "COMPLETE").touch()
+                print(
+                    json.dumps(
+                        {
+                            "event": "checkpoint_complete",
+                            "step": display_step,
+                            "output": str(folder),
+                        }
+                    ),
+                    flush=True,
+                )
+            if rank == 0 and keep_every > 0:
+                removed = prune_checkpoints(
+                    output,
+                    display_step,
+                    keep_every,
+                    world,
+                    (["joint_state.json"] + (["fake.pt"] if joint.enabled else []))
+                    if joint
+                    else [],
+                )
+                print(
+                    json.dumps(
+                        {
+                            "event": "checkpoint_retention",
+                            "latest_step": display_step,
+                            "keep_every": keep_every,
+                            "removed": removed,
+                        }
+                    ),
+                    flush=True,
+                )
+            if world > 1:
+                dist.barrier()
+
     student.train()
     # Optional imports/preview initialization must not perturb the training RNG.
     with evaluation_state(student, device):
         monitor = TrainingMonitor(
             cfg, output, device,
-            start=start * updates_per_cycle if count_optimizer_updates else start,
+            start=resume_step,
         )
     monitor.run_preview(
-        student, start * updates_per_cycle if count_optimizer_updates else start,
+        student, resume_step,
         startup=True,
     )
+    if joint and joint.fake_updates < warmup_steps:
+        if rank == 0:
+            print(json.dumps({"event": "fake_warmup_start", "completed": joint.fake_updates,
+                              "target": warmup_steps, "student_init": cfg.get("student_init")}),
+                  flush=True)
+        for warmup in range(joint.fake_updates, warmup_steps):
+            joint.begin_step(warmup, accum, shape, next_context, warmup=True)
+            total_batches += accum
+            for update_record in joint.fake_update_records:
+                if rank == 0:
+                    if updates_log:
+                        updates_log.write(json.dumps(update_record) + "\n")
+                    with open(output / "fake_warmup.jsonl", "a") as warmup_log:
+                        warmup_log.write(json.dumps(update_record) + "\n")
+                monitor.log_optimizer_update(update_record)
+            if count_optimizer_updates:
+                save_checkpoint(warmup + 1)
+                monitor.run_preview(student, warmup + 1)
+        if rank == 0:
+            print(json.dumps({"event": "fake_warmup_complete", "fake_updates": joint.fake_updates}),
+                  flush=True)
     for step in range(start, cycle_steps):
-        display_step = (step + 1) * updates_per_cycle if count_optimizer_updates else step + 1
+        display_step = step_offset + (step + 1) * updates_per_cycle if count_optimizer_updates else step + 1
         torch.cuda.synchronize()
         begin = time.perf_counter()
         torch.cuda.reset_peak_memory_stats()
@@ -612,101 +745,7 @@ def main():
                 flush=True,
             )
         monitor.log_step(record, optimizer.param_groups[0]["lr"])
-        keep_every = cfg.get("checkpoint_keep_every", 0)
-        if cfg.get("save_checkpoints", True) and (
-            checkpoint_due(
-                display_step,
-                cfg.get("save_every", 25),
-                cfg["steps"],
-                cfg.get("save_first_step", False),
-            )
-            or (keep_every > 0 and display_step % keep_every == 0)
-        ):
-            folder = output / f"step_{display_step:06d}"
-            folder.mkdir(exist_ok=True)
-            if rank == 0:
-                (folder / "COMPLETE").unlink(missing_ok=True)
-                print(
-                    json.dumps(
-                        {
-                            "event": "checkpoint_start",
-                            "step": display_step,
-                            "output": str(folder),
-                        }
-                    ),
-                    flush=True,
-                )
-            if world > 1:
-                dist.barrier()
-            if cfg.get("optimizer_cpu_offload", False):
-                move_optimizer_state(optimizer, device)
-            model_state, optim_state = checkpoint_state(student, optimizer)
-            if cfg.get("optimizer_cpu_offload", False):
-                move_optimizer_state(optimizer, "cpu")
-                torch.cuda.empty_cache()
-            if rank == 0:
-                torch.save(
-                    {
-                        "student": model_state,
-                        "optimizer": optim_state,
-                        "step": display_step,
-                        "config": cfg,
-                    },
-                    folder / "model.pt.tmp",
-                )
-                (folder / "model.pt.tmp").replace(folder / "model.pt")
-            del model_state, optim_state
-            if joint:
-                joint.save(folder, display_step)
-            torch.save(
-                {
-                    "world": world,
-                    "batch": batch,
-                    "streams": streams,
-                    "cpu_rng": torch.get_rng_state(),
-                    "cuda_rng": torch.cuda.get_rng_state(),
-                    "python_rng": random.getstate(),
-                    "total_batches": total_batches,
-                },
-                folder / f"rank_{rank}.pt",
-            )
-            if world > 1:
-                dist.barrier()
-            if rank == 0:
-                (folder / "COMPLETE").touch()
-                print(
-                    json.dumps(
-                        {
-                            "event": "checkpoint_complete",
-                            "step": display_step,
-                            "output": str(folder),
-                        }
-                    ),
-                    flush=True,
-                )
-            if rank == 0 and keep_every > 0:
-                removed = prune_checkpoints(
-                    output,
-                    display_step,
-                    keep_every,
-                    world,
-                    (["joint_state.json"] + (["fake.pt"] if joint.enabled else []))
-                    if joint
-                    else [],
-                )
-                print(
-                    json.dumps(
-                        {
-                            "event": "checkpoint_retention",
-                            "latest_step": display_step,
-                            "keep_every": keep_every,
-                            "removed": removed,
-                        }
-                    ),
-                    flush=True,
-                )
-            if world > 1:
-                dist.barrier()
+        save_checkpoint(display_step)
         monitor.run_preview(student, display_step, final=display_step == cfg["steps"])
     monitor.close()
     if log:

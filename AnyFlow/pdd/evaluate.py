@@ -22,6 +22,7 @@ def main():
     p.add_argument("--output", required=True)
     p.add_argument("--nfe", type=int, nargs="+", default=[4, 8])
     p.add_argument("--teacher-steps", type=int, default=50)
+    p.add_argument("--teacher-only", action="store_true", help="Generate only teacher results")
     p.add_argument(
         "--skip-teacher",
         action="store_true",
@@ -36,11 +37,16 @@ def main():
     )
     p.add_argument("--limit", type=int, default=4)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 43])
-    p.add_argument("--wan-root", default="../Wan2.2")
+    p.add_argument("--wan-root", help="Wan source checkout for VAE decoding; defaults to config wan_root")
     p.add_argument("--decode", action="store_true")
     p.add_argument("--resume-evaluation", action="store_true")
     a = p.parse_args()
+    if a.teacher_only and a.skip_teacher:
+        p.error("--teacher-only cannot be combined with --skip-teacher")
     cfg = json.loads(Path(a.config).read_text())
+    a.wan_root = a.wan_root or cfg.get("wan_root")
+    if a.decode and not a.wan_root:
+        p.error("Decoding requires --wan-root or wan_root in the configuration")
     for nfe in a.nfe:
         edges = rollout_edges(cfg["num_heads"], nfe)
         widths = [right - left for left, right in zip(edges[:-1], edges[1:])]
@@ -64,10 +70,11 @@ def main():
             "seeds",
             "decode",
             "skip_teacher",
+            "teacher_only",
             "official_teacher_root",
             "official_negative",
         ):
-            if previous["arguments"].get(key) != vars(a).get(key):
+            if previous["arguments"].get(key, False if key == "teacher_only" else None) != vars(a).get(key):
                 raise ValueError(f"Evaluation resume argument mismatch: {key}")
         for key in (
             "checkpoint",
@@ -242,9 +249,9 @@ def main():
             for seed_index, seed in enumerate(a.seeds):
                 if (index * len(a.seeds) + seed_index) % world != rank:
                     continue
-                modes = ([] if a.skip_teacher else ["teacher"]) + [
+                modes = ([] if a.skip_teacher else ["teacher"]) + ([] if a.teacher_only else [
                     f"pdd_{n}" for n in a.nfe
-                ]
+                ])
                 if all((index, seed, mode) in completed for mode in modes):
                     continue
                 noise = torch.randn(

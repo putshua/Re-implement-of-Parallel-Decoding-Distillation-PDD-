@@ -18,7 +18,7 @@ from pdd.distributed import (
     verify_optimizer_fp32,
 )
 from pdd.model import PDDWan, load_wan, guided_velocity
-from pdd.core import rollout_edges
+from pdd.core import rollout, rollout_edges
 from pdd.phased_dmd import (
     conditional_renoise,
     fake_score_loss,
@@ -54,6 +54,8 @@ class JointTraining:
                 raise ValueError(f"Rollout NFE {nfe} is outside trained block range")
         self.count_optimizer_updates = bool(cfg.get("count_optimizer_updates", False))
         self.updates_per_cycle = int(cfg["fake_updates_per_g"]) + 1
+        self.warmup_steps = int(cfg.get("fake_warmup_steps", 0))
+        self.step_offset = self.warmup_steps if self.count_optimizer_updates else 0
         self.dmd_endpoint_mode = cfg.get("dmd_endpoint_mode", "phase")
         if self.dmd_endpoint_mode not in ("phase", "final"):
             raise ValueError("dmd_endpoint_mode must be phase or final")
@@ -106,26 +108,14 @@ class JointTraining:
     def _rollout(self, noise, context, phase, nfe=None):
         if self.dmd_endpoint_mode == "final":
             return self._full_rollout(noise, context, nfe=nfe).detach()
-        x = noise
-        for left, right in zip(self.edges[: phase + 1], self.edges[1 : phase + 2]):
-            a = self.grid.new_zeros(1, self.cfg["num_heads"])
-            a[0, left:right] = self.grid.diff()[left:right]
-            x = x.float() + self.student(x, self.grid[left], context, a)[:, 0]
-        return x.detach()
+        return rollout(
+            self.student, noise, context, self.grid, self.edges[: phase + 2]
+        ).detach()
 
     def _full_rollout(self, noise, context, nfe=None):
         """Differentiable complete student rollout for ordinary endpoint DMD."""
-        x = noise
-        edges = (
-            self.edges
-            if nfe is None
-            else rollout_edges(self.cfg["num_heads"], nfe)
-        )
-        for left, right in zip(edges[:-1], edges[1:]):
-            a = self.grid.new_zeros(1, self.cfg["num_heads"])
-            a[0, left:right] = self.grid.diff()[left:right]
-            x = x.float() + self.student(x, self.grid[left], context, a)[:, 0]
-        return x
+        edges = self.edges if nfe is None else rollout_edges(self.cfg["num_heads"], nfe)
+        return rollout(self.student, noise, context, self.grid, edges)
 
     def _score_sample(self, xs, phase):
         endpoint = (
@@ -161,23 +151,25 @@ class JointTraining:
         # Wan expects one sigma for each example; PDDWan supports [B] times.
         return self.fake(xt, t, context, a)[:, 0]
 
-    def begin_step(self, step, accum, shape, next_context):
+    def begin_step(self, step, accum, shape, next_context, *, warmup=False):
         self.rows = []
         self.data = []
         self.fake_update_records = []
+        update_base = step if warmup else step * self.updates_per_cycle + self.step_offset
+        seed_step = step - self.warmup_steps if warmup else step
         self.g_rollout_nfe = cyclic_rollout_nfe(
-            (step * self.updates_per_cycle + self.updates_per_cycle - 1)
+            (update_base + self.updates_per_cycle - 1)
             if self.count_optimizer_updates else step,
             self.rollout_nfes,
         )
         # Identical phase order across ranks; rank-local prompts/noise remain independent.
         order = list(range(self.phases))
-        random.Random(self.cfg["seed"] + step).shuffle(order)
+        random.Random(self.cfg["seed"] + seed_step).shuffle(order)
         input_rng = torch.Generator(device="cpu").manual_seed(
-            self.cfg["seed"] + 1000003 * self.rank + 7919 * step
+            self.cfg["seed"] + 1000003 * self.rank + 7919 * seed_step
         )
         self.head_rng = torch.Generator(device=self.device).manual_seed(
-            self.cfg["seed"] + 1000003 * self.rank + 7919 * step + 1
+            self.cfg["seed"] + 1000003 * self.rank + 7919 * seed_step + 1
         )
         for micro in range(accum):
             self.data.append(
@@ -194,10 +186,10 @@ class JointTraining:
         if not self.enabled:
             return
         self.fake.train()
-        for update in range(self.cfg["fake_updates_per_g"]):
+        for update in range(1 if warmup else self.cfg["fake_updates_per_g"]):
             update_started = time.perf_counter()
             nfe = cyclic_rollout_nfe(
-                (step * self.updates_per_cycle + update)
+                (update_base + update)
                 if self.count_optimizer_updates else step,
                 self.rollout_nfes,
             )
@@ -237,8 +229,8 @@ class JointTraining:
                     micro == 0 or (micro + 1) % self.cfg["log_micro_every"] == 0
                 ):
                     print(
-                        f"[fake] step={step * self.updates_per_cycle + update + 1} "
-                        f"Gcycle={step + 1} update={update + 1} nfe={nfe} "
+                        f"[fake] step={update_base + update + 1} "
+                        f"Gcycle={0 if warmup else step + 1} warmup={warmup} update={update + 1} nfe={nfe} "
                         f"micro={micro + 1}/{accum} phase={phase} loss={loss.item():.7f}",
                         flush=True,
                     )
@@ -274,8 +266,9 @@ class JointTraining:
             if self.world > 1:
                 dist.all_reduce(summary)
             self.fake_update_records.append({
-                "step": step * self.updates_per_cycle + update + 1,
+                "step": update_base + update + 1,
                 "update_type": "fake",
+                "warmup": warmup,
                 "rollout_nfe": nfe,
                 "loss_mean": (summary[0] / summary[1]).item(),
                 "grad_norm": float(grad),
@@ -284,8 +277,8 @@ class JointTraining:
             })
             if self.rank == 0:
                 print(
-                    f"[fake] step={step * self.updates_per_cycle + update + 1} "
-                    f"Gcycle={step + 1} update={update + 1} nfe={nfe} "
+                    f"[fake] step={update_base + update + 1} "
+                    f"Gcycle={0 if warmup else step + 1} warmup={warmup} update={update + 1} nfe={nfe} "
                     f"grad_norm={float(grad):.6f}",
                     flush=True,
                 )
@@ -338,7 +331,7 @@ class JointTraining:
                 )
         dmd = trajectory.new_zeros(())
         if self.enabled:
-            s, t, eps, xt = self._score_sample(xs, phase)
+            s, t, _, xt = self._score_sample(xs, phase)
             with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
                 fake = self._fake_velocity(xt, t, context, phase)
                 real = guided_velocity(

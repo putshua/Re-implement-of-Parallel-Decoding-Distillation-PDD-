@@ -99,12 +99,19 @@ def rollout_edges(grid_size, nfe):
     return [i * grid_size // nfe for i in range(nfe + 1)]
 
 
-@torch.no_grad()
-def sample(student, x, context, grid, nfe):
-    N = len(grid) - 1
-    edges = rollout_edges(N, nfe)
+def rollout(student, x, context, grid, edges):
+    """Integrate fused head displacements; caller controls gradient tracking.
+
+    A prefix can use a subset of edges. Sampling disables gradients, whereas
+    final-endpoint DMD retains the graph through the complete rollout.
+    """
     for n, end in zip(edges[:-1], edges[1:]):
-        a = grid.new_zeros(1, N)
+        a = grid.new_zeros(1, len(grid) - 1)
         a[0, n:end] = grid.diff()[n:end]
         x = x.float() + student(x, grid[n], context, a)[:, 0]
     return x
+
+
+@torch.no_grad()
+def sample(student, x, context, grid, nfe):
+    return rollout(student, x, context, grid, rollout_edges(len(grid) - 1, nfe))

@@ -6,7 +6,7 @@ export PYTHONPATH="$ROOT/AnyFlow${PYTHONPATH:+:$PYTHONPATH}"
 export USE_TF=0 TOKENIZERS_PARALLELISM=false OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-max_split_size_mb:512}"
 export NCCL_DEBUG="${NCCL_DEBUG:-WARN}"
-CONFIG="${CONFIG:-$ROOT/configs/wan13b_480p.json}"
+: "${CONFIG:?Set CONFIG to your training JSON}"
 NNODES="${NNODES:-1}"
 NPROC_PER_NODE="${NPROC_PER_NODE:-4}"
 if [[ "$NNODES" == 1 ]]; then
@@ -18,7 +18,7 @@ else
   fi
   RENDEZVOUS=(--rdzv-backend c10d
     --rdzv-endpoint "${RDZV_ENDPOINT:-${MASTER_ADDR:-localhost}:${MASTER_PORT:-29571}}"
-    --rdzv-id "${RDZV_ID:-pdd-wan1p3b-480p-450k}"
+    --rdzv-id "${RDZV_ID:-pdd-training}"
     --rdzv-conf "join_timeout=${RDZV_TIMEOUT:-900}")
 fi
 ARGS=(--config "$CONFIG")
@@ -27,7 +27,7 @@ ARGS=(--config "$CONFIG")
 [[ -z "${STEPS:-}" ]] || ARGS+=(--steps "$STEPS")
 [[ -z "${OUTPUT:-}" ]] || ARGS+=(--output "$OUTPUT")
 [[ -z "${RESUME:-}" ]] || ARGS+=(--resume "$RESUME")
-for KEY in CHECKPOINT WEIGHT_INDEX EMBEDDING_DIR PROMPT_EMBEDDINGS NEGATIVE_EMBEDDINGS STUDENT_INIT; do
+for KEY in CHECKPOINT WEIGHT_INDEX EMBEDDING_DIR PROMPT_EMBEDDINGS NEGATIVE_EMBEDDINGS STUDENT_INIT WAN_ROOT; do
   VALUE="${!KEY:-}"
   [[ -z "$VALUE" ]] || ARGS+=(--set "${KEY,,}=$VALUE")
 done

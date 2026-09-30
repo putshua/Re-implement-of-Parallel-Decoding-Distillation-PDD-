@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "community-pdd"
+version = "1.0.0"
+description = "Community implementation of Parallel Decoding Distillation for Wan"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
+[tool.setuptools.packages.find]
+where = ["AnyFlow"]
+include = ["pdd*"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}

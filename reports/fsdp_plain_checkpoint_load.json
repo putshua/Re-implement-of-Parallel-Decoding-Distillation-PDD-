@@ -1,8 +1,0 @@
-{
-  "strict_plain_pdd_wan_load": "pass",
-  "state_tensors": 825,
-  "model_parameters": 1431489536,
-  "step": 2,
-  "distributed_strategy": "fsdp",
-  "fsdp_shard_size": 2
-}
