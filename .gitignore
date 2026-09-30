@@ -1,0 +1,30 @@
+# Training artifacts and model weights
+/outputs/
+output/
+checkpoints/
+checkpoint/
+runs/
+logs/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Generated reports and local state
+*.log
+*.tmp
+*.py[cod]
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+# Local credentials
+.env
+.env.*
+.token
+*.pem
+*.key
+
+# Embedded upstream Git metadata; publish its source files as ordinary files.
+/AnyFlow/.git/
